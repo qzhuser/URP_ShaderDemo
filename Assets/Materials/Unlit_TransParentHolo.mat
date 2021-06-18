@@ -54,7 +54,7 @@ Material:
     m_Floats:
     - _DiffusedAmount: 0.02
     - _DstBlend: 10
-    - _Grow: 1
+    - _Grow: 0
     - _GrowWidth: 1
     - _Heigh: 5
     - _IsBumpMap: 1

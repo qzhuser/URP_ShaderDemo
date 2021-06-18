@@ -32,8 +32,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - _Frequency: 40
-    - _Grow: 1.01
+    - _Frequency: 14.39
+    - _Grow: 0.89
     - _GrowWidth: 0
     - _Smoothness: 0.582
     - _heigh: 10
@@ -41,3 +41,4 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionCol: {r: 1, g: 1, b: 1, a: 1}
     - _GrowCol: {r: 1.6, g: 4.54902, b: 6.3686275, a: 1}
+  m_BuildTextureStacks: []
