@@ -106,7 +106,8 @@
 				void UCLAGL_geom(triangle UCLAGL_v2g p[3], inout TriangleStream<UCLAGL_g2f> triStream)
 				{
 
-					//视口坐标
+					
+					//得到屏幕坐标（屏幕分辨率*ndc坐标）   p[0].pos.xy /  p[0].pos.w 透视除法
 					float2 p0 = _ScreenParams.xy *  p[0].pos.xy /  p[0].pos.w;
 					float2 p1 = _ScreenParams.xy *  p[1].pos.xy /  p[1].pos.w;
 					float2 p2 = _ScreenParams.xy *  p[2].pos.xy /  p[2].pos.w;
@@ -120,7 +121,7 @@
 					//三角形的面积
  					float area = abs(v1.x*v2.y - v1.y * v2.x);
 
-					//面积除于边长 当前点距离每个边的长度
+					//面积除于边长 当前点距离对边的长度
 					float dist0 = area / length(v0);
 					float dist1 = area / length(v1);
 					float dist2 = area / length(v2);
@@ -163,7 +164,7 @@
 					//获取该点到附近三条边最短的距离
 					float val = min( input.dist.x, min( input.dist.y, input.dist.z));
 	
-					//添加宽度 也可以直接与宽度值比较
+					//添加宽度 也可以直接与宽度值比较（拿一个系数控制线的宽度）
 					val = exp2( -1/_LineThickness * val * val );
 		
 					//

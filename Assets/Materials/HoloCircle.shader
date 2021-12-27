@@ -14,9 +14,10 @@
 		_LineThickness ("Line Thickness", Range(0.0,5.0)) = 1
 		_growWidth("GrowWidth",float)=3
 		_Heigh("Heigh",float)=30
-
+		_TesllAmount("Tess Amount",Int)=1
 		[Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend("Src Blend Model",Float)=1
 		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend("Dst Blend Model",Float)=1
+
     }
     SubShader
     {
@@ -35,15 +36,27 @@
 				#pragma vertex UCLAGL_vert
 				#pragma fragment UCLAGL_frag
 				#pragma geometry UCLAGL_geom
+				#pragma hull MyHullProgram
+				#pragma domain MyDomainProgram
 				//gpu instance
 				#pragma multi_compile_instancing
 
-				struct UCLAGL_v2g
+				struct UCLAGL_v2t
+				{
+
+					float4 vertex : INTERNALTESSPOS;
+					float3 normal:NORMAL;
+					float4 tangent : TANGENT;
+					float2 uv:TEXCOORD0;
+					float2 uv1 : TEXCOORD2;
+					float2 uv2 : TEXCOORD3;
+				};
+				struct UCLAGL_t2g
 				{
 					float4 pos:POSITION;
 					float2 uv:TEXCOORD0;
 					float3 normal:NORMAL;
-					float3 modelPos:TEXCOORD2;
+					float3 modelPos:TEXCOORD1;
 				};
 
 				// Geometry to  UCLAGL_fragment
@@ -55,6 +68,20 @@
 					float3 worldpos:TEXCOORD2;
 					float3 modelPos:TEXCOORD3;
 				};
+				struct TessellationFactors
+				{
+					float edge[3] : SV_TessFactor;
+					float inside : SV_InsideTessFactor;
+
+				};
+				//struct TessellationControlPoint {
+				//	float4 vertex : INTERNALTESSPOS;
+				//	float3 normal : NORMAL;
+				//	float4 tangent : TANGENT;
+				//	float2 uv : TEXCOORD0;
+				//	float2 uv1 : TEXCOORD1;
+				//	float2 uv2 : TEXCOORD2;
+				//};
 
 				sampler2D _MainTex;
 				float4 _MainTex_ST;
@@ -68,18 +95,60 @@
 				float _grow;
 				float _Heigh;
 				float _growWidth;
+				fixed _TesllAmount;
 
-				UCLAGL_v2g UCLAGL_vert(appdata_base v)
+				UCLAGL_v2t UCLAGL_vert(appdata_full v)
 				{
-					UCLAGL_v2g output;
-					output.modelPos=v.vertex.xyz;
-					
+					UCLAGL_v2t output;
 					//v.vertex.xyz+=v.normal*value*0.2;
+					//output.pos =  UnityObjectToClipPos(v.vertex);
+					//output.uv = TRANSFORM_TEX (v.texcoord, _LineMainTex);
+					output.vertex=v.vertex;
 					output.normal=v.normal;
-					output.pos =  UnityObjectToClipPos(v.vertex);
-					output.uv = TRANSFORM_TEX (v.texcoord, _LineMainTex);
+					output.tangent=v.tangent;
+					output.uv=v.texcoord;
+					output.uv1=v.texcoord1;
+					output.uv2=v.texcoord2;
 					return output;
 				}
+				TessellationFactors MyPatchConstantFunction(InputPatch<UCLAGL_v2t,3> patch){
+					TessellationFactors f;
+					//对三条边分割，每条边分成三部分
+					f.edge[0]=_TesllAmount;
+					f.edge[1]=_TesllAmount;
+					f.edge[2]=_TesllAmount;
+					//计算三个新顶点的重心坐标
+					f.inside=_TesllAmount;
+					return f;
+				}
+
+				[UNITY_domain("tri")]
+				[UNITY_outputcontrolpoints(3)]
+				[UNITY_outputtopology("triangle_cw")]
+				[UNITY_partitioning("integer")]
+				[UNITY_patchconstantfunc("MyPatchConstantFunction")]
+				UCLAGL_v2t MyHullProgram(InputPatch<UCLAGL_v2t,3> patch,uint id:SV_OUTPUTCONTROLPOINTID){
+					return patch[id];
+				}
+
+				[UNITY_domain("tri")]
+				UCLAGL_t2g MyDomainProgram(TessellationFactors factors,
+				OutputPatch<UCLAGL_v2t,3> patch,
+				float3 bary:SV_DOMAINLOCATION){
+					UCLAGL_t2g data;
+					//求出新顶点的属性
+					float4 vertex=patch[0].vertex*bary.x+patch[1].vertex*bary.y+patch[2].vertex*bary.z;
+					float3 normal=patch[0].normal*bary.x+patch[1].normal*bary.y+patch[2].normal*bary.z;
+					data.pos =  UnityObjectToClipPos(vertex);
+					data.modelPos=vertex.xyz;
+
+					data.normal=normal;
+					data.uv =patch[0].uv*bary.x+patch[1].uv*bary.y+patch[2].uv*bary.z;
+					return data;
+				}
+
+
+
 				half GetValue(float3 modelPos){
 					float3 worldPos=mul(unity_ObjectToWorld,modelPos);
 					//_grow=(sin(_Time.y*0.5)*sin(_Time.y*0.5));
@@ -90,7 +159,7 @@
 				
 				// Geometry Shader
 				[maxvertexcount(3)]
-				void UCLAGL_geom(triangle UCLAGL_v2g p[3], inout TriangleStream<UCLAGL_g2f> triStream)
+				void UCLAGL_geom(triangle UCLAGL_t2g p[3], inout TriangleStream<UCLAGL_g2f> triStream)
 				{
 					//获得每个三角面的垂直向量
 					float3 dirModel1=p[0].modelPos-p[1].modelPos;
@@ -152,6 +221,8 @@
 					pIn.worldpos=mul(unity_ObjectToWorld,temp3);
 					pIn.dist = float3(0,0,dist2);
 					triStream.Append(pIn);
+
+
 					triStream.RestartStrip();
 
 					// pIn.pos = (p[0].pos+p[1].pos+p[2].pos)/3;
